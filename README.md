@@ -1,4 +1,4 @@
-# edutraceug-sysadmin-worker
+# edutraceug-sysadmin
 
 your-repo/
 ├── index.js

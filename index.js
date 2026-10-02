@@ -1,9 +1,9 @@
-/**  My lastest worker bro digital
+/**
  * Worker: edutraceug-sysadmin-worker
  * Base URL: https://edutraceug-sysadmin-worker.anubisdigital114-9df.workers.dev
  */
 
-const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const GOOGLE_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 let jwksCache = { keys: null, fetchedAt: 0 };
 
 /* ================================================================== *

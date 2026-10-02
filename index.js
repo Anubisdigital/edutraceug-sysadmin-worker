@@ -351,6 +351,9 @@ async function listAllCollectionDocs(token, projectId, collection) {
 
 /* ================================================================== *
  * FIREBASE IDENTITY TOOLKIT HELPERS
+ * Using project-scoped endpoints — the officially documented ones for
+ * admin operations that require an OAuth2 bearer token from a service
+ * account.
  * ================================================================== */
 
 async function lookupUserByEmail(token, projectId, email) {
@@ -365,7 +368,7 @@ async function lookupUserByEmail(token, projectId, email) {
 }
 
 async function createFirebaseUser(token, projectId, email, password) {
-  const url = 'https://identitytoolkit.googleapis.com/v1/accounts';
+  const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts`;
   const { ok, data } = await safeFetchJson(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -385,7 +388,7 @@ async function createFirebaseUser(token, projectId, email, password) {
 }
 
 async function setCustomUserClaims(token, projectId, uid, customClaims) {
-  const url = 'https://identitytoolkit.googleapis.com/v1/accounts:update';
+  const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:update`;
   const { ok, data } = await safeFetchJson(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -615,7 +618,10 @@ export default {
           adminEmail,
           adminPassword
         );
-        const adminUid = fbUser.localId || fbUser.uid;
+        const adminUid = fbUser.localId || fbUser.uid || fbUser.name?.split('/').pop();
+        if (!adminUid) {
+          throw new Error('Firebase user created but no UID was returned');
+        }
 
         await setCustomUserClaims(fbToken, projectId, adminUid, {
           role: 'schoolAdmin',
@@ -642,7 +648,7 @@ export default {
           createdVia: 'registration-request',
         });
 
-        // Upsert member doc (idempotent — safe if the Firebase user already existed)
+        // Upsert member doc (idempotent)
         const memberData = {
           uid: adminUid,
           email: adminEmail,
@@ -660,7 +666,7 @@ export default {
           await createDoc(fbToken, projectId, 'members', adminUid, memberData);
         }
 
-        // Reserve slug LAST — only after user + school + member exist
+        // Reserve slug LAST
         if (!existingSlugDoc) {
           await createDoc(fbToken, projectId, 'slugs', slug, {
             schoolId,
@@ -688,8 +694,6 @@ export default {
           const safeAdminEmail = esc(adminEmail);
           const safeAdminPassword = esc(adminPassword);
           const safeRegistrarName = esc(requestDoc.registrarName || 'there');
-          const safeRequestSchoolName = esc(requestDoc.schoolName || 'your school');
-          const safeReason = esc(reasonSafe());
 
           const welcomeHtml = `
             <div style="font-family:Arial,sans-serif;max-width:600px;color:#1A1A1A;line-height:1.6">
@@ -734,10 +738,6 @@ export default {
             );
           }
           ctx.waitUntil(Promise.all(emailTasks));
-
-          function reasonSafe() {
-            return '';
-          }
         }
 
         return jsonResponse({
